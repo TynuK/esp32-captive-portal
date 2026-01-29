@@ -1,0 +1,14 @@
+{
+  "name": "ESP32-Captive-Portal",
+  "version": "1.0.0",
+  "description": "Captive portal library for ESP32",
+  "keywords": ["esp32", "captive-portal", "wifi"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tynuk/esp32-captive-portal.git"
+  },
+  "authors": [{"name": "TynuK"}],
+  "license": "MIT",
+  "frameworks": ["espidf"],
+  "platforms": ["espressif32"]
+}
