@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Captive Portal</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2196F3;
+            --background-color: #f5f5f5;
+            --card-background: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            background-color: var(--card-background);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.offline {
+            background-color: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background-color: var(--card-background);
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h3 i {
+            font-size: 1.2em;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li::before {
+            content: "?";
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .api-demo {
+            background-color: var(--card-background);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 40px;
+        }
+
+        .api-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .api-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button.secondary {
+            background-color: var(--secondary-color);
+        }
+
+        button.secondary:hover {
+            background-color: #0b7dda;
+        }
+
+        .response-area {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+            min-height: 60px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .device-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            background-color: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .info-item .label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .info-item .value {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .api-controls {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>ESP32 Captive Portal</h1>
+        <p class="subtitle">Feature-Rich Wi-Fi Configuration Interface</p>
+    </header>
+
+    <div class="status-bar">
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Portal is running</span>
+        </div>
+        <div id="connectionInfo">
+            SSID: <strong>ESP32-Portal</strong> | IP: <strong>192.168.4.1</strong>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <h3><i>??</i> Wi-Fi Features</h3>
+            <ul class="feature-list">
+                <li>Access Point with captive portal</li>
+                <li>Open network (no password) or WPA2 secured</li>
+                <li>DNS hijacking for captive portal detection</li>
+                <li>Customizable SSID and channel</li>
+                <li>Multiple device connections (up to 4)</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h3><i>??</i> Web Server Features</h3>
+            <ul class="feature-list">
+                <li>Static file serving from SPIFFS</li>
+                <li>Automatic MIME type detection</li>
+                <li>Wildcard URI handlers</li>
+                <li>HTTP methods: GET, POST, PUT, DELETE</li>
+                <li>Custom API endpoint support</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h3><i>??</i> Device Compatibility</h3>
+            <ul class="feature-list">
+                <li>Android (generate_204 detection)</li>
+                <li>iOS/Mac (hotspot-detect.html)</li>
+                <li>Windows (ncsi.txt, connecttest.txt)</li>
+                <li>Automatic redirects to portal</li>
+                <li>Proper captive portal responses</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="api-demo">
+        <h3>API Demo</h3>
+        <p>Test the custom API endpoints registered in the portal:</p>
+        
+        <div class="api-tabs">
+            <button class="tab active" onclick="showTab('getTab')">GET /api/status</button>
+            <button class="tab" onclick="showTab('postTab')">POST /api/config</button>
+        </div>
+
+        <div id="getTab" class="tab-content active">
+            <div class="code-block">
+// This endpoint returns portal status information
+// Method: GET
+// URL: /api/status
+// Response: JSON
+
+Example response:
+{
+    "status": "ok",
+    "portal": "working"
+}
+            </div>
+            <div class="api-controls">
+                <button onclick="testApi('status')">Test GET Request</button>
+                <button class="secondary" onclick="copyToClipboard('status')">Copy Example</button>
+            </div>
+            <div id="statusResponse" class="response-area">
+                Click "Test GET Request" to see the response...
+            </div>
+        </div>
+
+        <div id="postTab" class="tab-content">
+            <div class="code-block">
+// This endpoint accepts configuration data
+// Method: POST
+// URL: /api/config
+// Content-Type: application/json
+// Request body: JSON configuration
+
+Example request:
+{
+    "ssid": "MyNetwork",
+    "password": "secure123",
+    "channel": 6
+}
+            </div>
+            <div class="api-controls">
+                <button onclick="testApi('config')">Test POST Request</button>
+                <button class="secondary" onclick="showConfigForm()">Custom Config</button>
+            </div>
+            <div id="configResponse" class="response-area">
+                Click "Test POST Request" to see the response...
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i>??</i> Device Information</h3>
+        <div class="device-info">
+            <div class="info-item">
+                <div class="label">Wi-Fi Mode</div>
+                <div class="value">Access Point</div>
+            </div>
+            <div class="info-item">
+                <div class="label">HTTP Port</div>
+                <div class="value">80</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Web Root</div>
+                <div class="value">/spiffs</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Connected</div>
+                <div class="value" id="connectedCount">0</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>ESP32 Captive Portal Demo | Built with ESP-IDF</p>
+        <p>This page demonstrates the functionality of the captive portal library.</p>
+        <p>Connect to SSID: <strong>ESP32-Portal</strong> and navigate to <strong>http://192.168.4.1</strong></p>
+    </footer>
+
+    <script>
+        // Tab switching
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            
+            // Add active class to clicked tab button
+            event.target.classList.add('active');
+        }
+
+        // Test API endpoints
+        async function testApi(endpoint) {
+            const responseArea = document.getElementById(endpoint + 'Response');
+            responseArea.textContent = 'Sending request...';
+            
+            try {
+                if (endpoint === 'status') {
+                    // GET request
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    responseArea.textContent = JSON.stringify(data, null, 2);
+                } else if (endpoint === 'config') {
+                    // POST request
+                    const config = {
+                        timestamp: new Date().toISOString(),
+                        ssid: "TestNetwork",
+                        channel: 1,
+                        sample: true
+                    };
+                    
+                    const response = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(config)
+                    });
+                    
+                    const data = await response.json();
+                    responseArea.textContent = JSON.stringify({
+                        request: config,
+                        response: data
+                    }, null, 2);
+                }
+            } catch (error) {
+                responseArea.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Copy to clipboard
+        async function copyToClipboard(type) {
+            let text = '';
+            if (type === 'status') {
+                text = `{\n    "status": "ok",\n    "portal": "working"\n}`;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(text);
+                alert('Copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+            }
+        }
+
+        // Show config form
+        function showConfigForm() {
+            const config = {
+                ssid: prompt('Enter SSID:', 'MyNetwork'),
+                password: prompt('Enter Password:', ''),
+                channel: parseInt(prompt('Enter Channel (1-11):', '6'))
+            };
+            
+            if (config.ssid) {
+                const responseArea = document.getElementById('configResponse');
+                responseArea.textContent = 'Config to send:\n' + 
+                    JSON.stringify(config, null, 2) +
+                    '\n\nSend this using: fetch("/api/config", { method: "POST", body: JSON.stringify(config) })';
+            }
+        }
+
+        // Simulate connection count updates
+        function updateConnectionCount() {
+            const count = Math.floor(Math.random() * 5); // Simulate 0-4 connections
+            document.getElementById('connectedCount').textContent = count;
+            
+            // Update status indicator
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (count > 0) {
+                statusDot.style.backgroundColor = '#4CAF50';
+                statusText.textContent = `${count} device(s) connected`;
+            } else {
+                statusDot.style.backgroundColor = '#FF9800';
+                statusText.textContent = 'Waiting for connections...';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update connection count every 5 seconds
+            updateConnectionCount();
+            setInterval(updateConnectionCount, 5000);
+            
+            // Test status API on load
+            setTimeout(() => testApi('status'), 1000);
+        });
+    </script>
+</body>
+</html>
